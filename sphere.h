@@ -2,15 +2,17 @@
 #define SPHERE_H
 
 #include "hittable.h"
+#include "material.h"
 
-class sphere : hittable {
+class sphere : public hittable {
 
 public :
 	double radius;
 	point3 center;
+	shared_ptr<material> mat_ptr;
 
 	sphere() : center(point3(0,0,0)), radius(1.0){};
-	sphere(point3 cen, double r): center(cen),radius(r) {};
+	sphere(point3 cen, double r, shared_ptr<material> m): center(cen),radius(r), mat_ptr(m){};
 
 	virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override;
 };
@@ -27,16 +29,18 @@ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) cons
 		auto t = (-half_b - sqrt(delta)) / a;
 		if (t > t_min && t < t_max) {
 			rec.p = r.at(t);
-			rec.normal = (rec.p - center) / radius;
+			rec.setFrontFace(r, (rec.p - center) / radius);
 			rec.t = t;
+			rec.mat_ptr = mat_ptr;
 			return true;
 		}
 
 		t = (-half_b + sqrt(delta)) / a;
 		if (t > t_min && t < t_max) {
 			rec.p = r.at(t);
-			rec.normal = (rec.p - center) / radius;
+			rec.setFrontFace(r, (rec.p - center) / radius);
 			rec.t = t;
+			rec.mat_ptr = mat_ptr;
 			return true;
 		}
 

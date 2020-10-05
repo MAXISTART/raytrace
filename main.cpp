@@ -3,35 +3,42 @@
 #include "color.h"
 #include "ray.h"
 #include "sphere.h"
+#include "hittable_list.h"
+#include "tools.h"
+#include "camera.h"
+#include "lambertian.h"
+#include "metal.h"
+
+
 using namespace std;
 
 
 
-double hit_sphere(const vec3& center, double radius, const ray& r) {
-	vec3 oc = r.origin() - center;
-	auto a = r.dir.length_squared();
-	auto half_b = dot(r.dir, oc);
-	auto c = oc.length_squared() - radius * radius;
-	auto delta = half_b * half_b - a * c;
-	if (delta < 0) return -1;
-	else return (-half_b - sqrt(delta)) / a;
-}
+color ray_color(const ray& r, const hittable_list& world, int recruse_depth) {
 
-color ray_color(const ray& r) {	
-	sphere circle(point3(0, 0, -1), 0.5);
 	hit_record rec;
-	bool is_hit = circle.hit(r, 0, 99999.0, rec);
-	if (is_hit) {
-		// return normal vector
-		// normal in [-1, 1]^3, transform to color space [0,1]^3
-		return 0.5 * (rec.normal + vec3(1, 1, 1));
+	bool is_hit = world.hit(r, 0.0001, INFINITY, rec);
+	if (is_hit && recruse_depth > 0) {
+		color attenuation;
+		ray scattered;
+		if (rec.mat_ptr->scatter(r, rec, attenuation, scattered)) {
+			return attenuation * ray_color(scattered, world, recruse_depth - 1);
+		}
+		else return color(0, 0, 0);
 	}
-
-	// paint background
-	auto dir = unit_vector(r.dir);
-	//  -1 <= dir.y <= 1, so first limit y to [0,1]
-	auto t = (dir.y() + 1.0) / 2.0;
-	return (1 - t)* color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+	else {
+		if (is_hit) {
+			// draw color
+			return color(0,0,0);
+		}
+		else {
+			// paint background
+			auto dir = unit_vector(r.dir);
+			//  -1 <= dir.y <= 1, so first limit y to [0,1]
+			auto t = (dir.y() + 1.0) / 2.0;
+			return (1 - t)* color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+		}
+	}
 }
 
 
@@ -57,27 +64,41 @@ int main() {
 	const int max_color_val = 255;
 
 
-	// camera settings£¬origin must be the center of the screen
-	const double focal_length = 1.0;
-	const vec3 origin(0,0,0);
-	
-	// viewport settings
-	const double viewport_height = 2.0;
-	const double viewport_width = aspect_ratio * viewport_height;
-	const vec3 horizontal(viewport_width, 0, 0);
-	const vec3 vertical(0, viewport_height, 0);
-	const vec3 lower_left_corner(origin - horizontal/2 - vertical/2 - vec3(0, 0, focal_length));
 
+	// make a scene
+	hittable_list world;
+	auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
+	auto material_center = make_shared<lambertian>(color(0.7, 0.3, 0.3));
+	auto material_left = make_shared<metal>(color(0.8, 0.8, 0.8));
+	auto material_right = make_shared<metal>(color(0.8, 0.6, 0.2));
+
+	world.add(make_shared<sphere>(point3(0.0, -100.5, -1.0), 100.0, material_ground));
+	world.add(make_shared<sphere>(point3(0.0, 0.0, -1.0), 0.5, material_center));
+	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), 0.5, material_left));
+	world.add(make_shared<sphere>(point3(1.0, 0.0, -1.0), 0.5, material_right));
+
+
+
+	// camera
+	camera cam;
+
+
+	// render
+	const int samples_per_pixel = 50;
+	const int max_depth = 50;
 
 	outfile << "P3" << endl << image_width << " " << image_height << endl << max_color_val << endl;
 	
 	for (int j = image_height - 1; j >= 0; --j) {
 		cout << "\rScanlines : " << j << ' ' << std::flush;
 		for (int i = 0; i < image_width; ++i) {
-			auto u = double(i) / (image_width - 1);
-			auto v = double(j) / (image_height - 1);
-			ray r(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-			write_color(outfile, ray_color(r));
+			color c;
+			for (int s = 0; s < samples_per_pixel; s++) {
+				auto u = (i + random_double()) / (image_width - 1);
+				auto v = (j + random_double()) / (image_height - 1);
+				c += ray_color(cam.get_ray(u, v), world, max_depth);
+			}
+			write_color(outfile, c, samples_per_pixel);
 		}
 	}
 

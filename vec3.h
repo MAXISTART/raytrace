@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>	
 #include <fstream>
+#include "tools.h"
 
 class vec3 {
 public:
@@ -47,6 +48,24 @@ public:
 	}
 
 
+	inline static vec3 random() {
+		return vec3(random_double(), random_double(), random_double());
+	}
+
+	inline static vec3 random(double t_min, double t_max) {
+		return vec3(random_double(t_min, t_max), random_double(t_min, t_max), random_double(t_min, t_max));
+	}
+
+	inline static vec3 random_in_unit_sphere() {
+		vec3 v;
+		while (true) {
+			v = random(-1, 1);
+			if (v.length_squared() <= 1) break;
+		}
+		return v;
+	}
+	
+public:
 	double e[3];
 
 };
@@ -97,6 +116,10 @@ inline vec3 unit_vector(const vec3& v) {
 	return v / v.length();
 }
 
+inline vec3 reflect(const vec3& in, const vec3& normal) {
+	// all is unit_vector!
+	return in - 2 * dot(in, normal) * normal;
+}
 
 
 
