@@ -14,7 +14,7 @@ public:
 
 bool lambertian::scatter(const ray& ray_in, const hit_record& rec, color& attenuation, ray& scattered) const{
 
-	auto reflect_ray = rec.normal + vec3::random_in_unit_sphere();
+	auto reflect_ray = rec.normal + random_in_unit_sphere();
 	scattered = ray(rec.p, reflect_ray);
 	attenuation = albedo;
 	return true;

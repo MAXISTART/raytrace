@@ -56,14 +56,6 @@ public:
 		return vec3(random_double(t_min, t_max), random_double(t_min, t_max), random_double(t_min, t_max));
 	}
 
-	inline static vec3 random_in_unit_sphere() {
-		vec3 v;
-		while (true) {
-			v = random(-1, 1);
-			if (v.length_squared() <= 1) break;
-		}
-		return v;
-	}
 	
 public:
 	double e[3];
@@ -114,6 +106,15 @@ inline vec3 cross(const vec3 &u, const vec3 &v) {
 
 inline vec3 unit_vector(const vec3& v) {
 	return v / v.length();
+}
+
+inline vec3 random_in_unit_sphere() {
+	vec3 v;
+	while (true) {
+		v = vec3::random(-1, 1);
+		if (v.length_squared() <= 1) break;
+	}
+	return v;
 }
 
 inline vec3 reflect(const vec3& in, const vec3& normal) {
