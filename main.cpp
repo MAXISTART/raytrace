@@ -8,11 +8,13 @@
 #include "camera.h"
 #include "lambertian.h"
 #include "metal.h"
-
+#include <thread>
+#include <mutex>
+#include <map>
 
 using namespace std;
 
-
+std::mutex mtx;           // write_file lock
 
 color ray_color(const ray& r, const hittable_list& world, int recruse_depth) {
 
@@ -84,24 +86,52 @@ int main() {
 
 
 	// render
-	const int samples_per_pixel = 50;
+	const int samples_per_pixel = 200;
 	const int max_depth = 50;
 
 	outfile << "P3" << endl << image_width << " " << image_height << endl << max_color_val << endl;
-	
-	for (int j = image_height - 1; j >= 0; --j) {
-		cout << "\rScanlines : " << j << ' ' << std::flush;
-		for (int i = 0; i < image_width; ++i) {
-			color c;
-			for (int s = 0; s < samples_per_pixel; s++) {
-				auto u = (i + random_double()) / (image_width - 1);
-				auto v = (j + random_double()) / (image_height - 1);
-				c += ray_color(cam.get_ray(u, v), world, max_depth);
-			}
-			write_color(outfile, c, samples_per_pixel);
-		}
+	vector<thread> ts;
+	vector<vector<color>> file_storage(image_height, vector<color>(image_width, color()));
+	int count = 0;
+	for (int j = image_height - 1; j >= 0; --j) {		
+		thread t([&,j]() {
+			vector<color> cs;
+			for (int i = 0; i < image_width; ++i) {
+				color c;
+				for (int s = 0; s < samples_per_pixel; s++) {
+					auto u = (i + random_double()) / (image_width - 1);
+					auto v = (j + random_double()) / (image_height - 1);
+					c += ray_color(cam.get_ray(u, v), world, max_depth);
+				}
+				cs.push_back(c);
+			}	
+			// 写的时候锁起来，同时要有顺序的写
+			mtx.lock();
+			file_storage[image_height - 1- j] = cs;
+			count++;
+			cout << "当前进度为： " << double(count) / image_height << endl;
+			mtx.unlock();
+		});
+		// thread 没有拷贝构造，需要左值转右值
+		ts.emplace_back(move(t));
+		//for (int i = 0; i < image_width; ++i) {
+		//	color c;
+		//	for (int s = 0; s < samples_per_pixel; s++) {
+		//		auto u = (i + random_double()) / (image_width - 1);
+		//		auto v = (j + random_double()) / (image_height - 1);
+		//		c += ray_color(cam.get_ray(u, v), world, max_depth);
+		//	}
+		//	write_color(outfile, c, samples_per_pixel);
+		//}
 	}
 
+	for (auto& t : ts) t.join();
+	// 汇总整个vector中的颜色
+	for_each(file_storage.begin(), file_storage.end(), [&](vector<color>& data) {
+		for (color& c : data) {
+			write_color(outfile, c, samples_per_pixel);
+		}
+	});
 
 	cout << "\nDone.\n" << std::flush;
 	outfile.close();
