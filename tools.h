@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <random>
 
+const double M_PI = 3.141592653589793;
+
 //inline double random_double() {
 //	// 返回 [0,1)的随机数
 //	return rand() / (RAND_MAX + 1);
@@ -26,6 +28,10 @@ inline double clamp(double x, double min, double max) {
 	return x;
 }
 
+
+inline double degrees_to_radians(double degree) {
+	return degree / 180.0 * M_PI;
+}
 
 
 

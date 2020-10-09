@@ -117,11 +117,28 @@ inline vec3 random_in_unit_sphere() {
 	return v;
 }
 
+// ·´Éä
 inline vec3 reflect(const vec3& in, const vec3& normal) {
 	// all is unit_vector!
 	return in - 2 * dot(in, normal) * normal;
 }
 
+// ÕÛÉä
+inline vec3 refract(const vec3& in, const vec3& normal, double refract_rate) {
+	auto cos_theta = dot(in, normal);
+	auto r_out_perp = refract_rate * (in - cos_theta * normal);
+	auto r_out_parallel = -sqrt(abs(1 - r_out_perp.length_squared())) * normal;
+	return r_out_perp + r_out_parallel;
+}
+
+
+inline vec3 random_in_unit_disk() {
+	while (true) {
+		auto p = vec3(random_double(-1, 1), random_double(-1, 1), 0);
+		if (p.length_squared() >= 1) continue;
+		return p;
+	}
+}
 
 
 // Type aliases for vec3
